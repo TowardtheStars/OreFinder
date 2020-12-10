@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "orefinder:wood_finder",
+    "orefinder:stone_finder",
+    "orefinder:iron_finder",
+    "orefinder:gold_finder",
+    "orefinder:diamond_finder"
+  ]
+}
