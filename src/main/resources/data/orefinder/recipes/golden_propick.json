@@ -1,19 +1,19 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " S ",
-    "III"
+    "###",
+    " /#",
+    "/  "
   ],
   "key": {
-    "S": {
-      "tag": "forge:rods/wooden"
-    },
-    "I": {
+    "#": {
       "tag": "forge:ingots/gold"
+    },
+    "/": {
+      "tag": "forge:rods/wooden"
     }
   },
   "result": {
-    "item": "orefinder:gold_finder"
+    "item": "orefinder:golden_propick"
   }
 }

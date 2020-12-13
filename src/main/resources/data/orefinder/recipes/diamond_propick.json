@@ -1,19 +1,19 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " S ",
-    " S ",
-    "III"
+    "###",
+    " /#",
+    "/  "
   ],
   "key": {
-    "S": {
-      "tag": "forge:rods/wooden"
-    },
-    "I": {
+    "#": {
       "tag": "forge:gems/diamond"
+    },
+    "/": {
+      "tag": "forge:rods/wooden"
     }
   },
   "result": {
-    "item": "orefinder:diamond_finder"
+    "item": "orefinder:diamond_propick"
   }
 }

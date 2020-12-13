@@ -1,10 +1,10 @@
 {
   "replace": false,
   "values": [
-    "orefinder:wood_finder",
-    "orefinder:stone_finder",
-    "orefinder:iron_finder",
-    "orefinder:gold_finder",
-    "orefinder:diamond_finder"
+    "orefinder:wooden_propick",
+    "orefinder:stone_propick",
+    "orefinder:iron_propick",
+    "orefinder:golden_propick",
+    "orefinder:diamond_propick"
   ]
 }
