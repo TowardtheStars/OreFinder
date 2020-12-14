@@ -67,6 +67,7 @@ public class Prospectors
             {
                 Map<Block, Long> counter =
                         posRange
+                                .filter(world::isBlockPresent)
                                 .map(pos -> world.getBlockState(pos).getBlock())
                                 .filter(OreFinder::shouldProspect)
                                 .collect(Collectors.groupingBy(block -> block, Collectors.counting()));

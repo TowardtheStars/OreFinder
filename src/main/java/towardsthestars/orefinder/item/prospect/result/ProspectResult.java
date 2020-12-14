@@ -4,18 +4,21 @@ import com.google.common.collect.Maps;
 import lombok.NoArgsConstructor;
 import net.minecraft.command.ICommandSource;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.EndNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.common.util.INBTSerializable;
+import towardsthestars.orefinder.util.ICanMerge;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.function.Supplier;
 
 @NoArgsConstructor
-public abstract class ProspectResult<T extends INBT> implements INBTSerializable<T>
+public abstract class ProspectResult<T extends INBT, E extends ProspectResult>
+        implements INBTSerializable<T>, ICanMerge<E>
 {
 
     public boolean isEmpty()
@@ -48,20 +51,16 @@ public abstract class ProspectResult<T extends INBT> implements INBTSerializable
         RESULT_PROVIDERS.put(supplier.get().resultType(), supplier);
     }
 
-    public static ProspectResult NULL_RESULT = new ProspectResult()
+    public static class NullResult extends ProspectResult<EndNBT, NullResult>
     {
+        private NullResult(){}
+        static NullResult NULL_RESULT = new NullResult();
         @Override
-        public void sendReport(ICommandSource source)
+        protected void report(ICommandSource source)
         {
             source.sendMessage(new TranslationTextComponent("orefinder.report.empty")
                     .setStyle(new Style().setColor(TextFormatting.GREEN))
             );
-        }
-
-        @Override
-        protected void report(ICommandSource source)
-        {
-
         }
 
         @Override
@@ -71,17 +70,28 @@ public abstract class ProspectResult<T extends INBT> implements INBTSerializable
         }
 
         @Override
-        public INBT serializeNBT()
+        public EndNBT serializeNBT()
         {
             return null;
         }
 
         @Override
-        public void deserializeNBT(INBT nbt)
+        public void deserializeNBT(EndNBT nbt)
         {
 
         }
-    };
+
+        @Override
+        public NullResult merge(NullResult another)
+        {
+            return this;
+        }
+    }
+
+    public static ProspectResult getNull()
+    {
+        return NullResult.NULL_RESULT;
+    }
 
     public static Supplier<? extends ProspectResult> getValue(String type)
     {
@@ -98,7 +108,7 @@ public abstract class ProspectResult<T extends INBT> implements INBTSerializable
             prospectResult.deserializeNBT(nbt.get("result"));
             return prospectResult;
         }
-        return NULL_RESULT;
+        return NullResult.getNull();
     }
 
     @Nonnull

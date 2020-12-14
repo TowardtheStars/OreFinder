@@ -22,7 +22,7 @@ import towardsthestars.orefinder.util.Plain8Direction;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CoarseProspectResult extends ProspectResult<CompoundNBT>
+public class CoarseProspectResult extends ProspectResult<CompoundNBT, CoarseProspectResult>
 {
 
     private IPlainDirection direction = null;
@@ -78,5 +78,16 @@ public class CoarseProspectResult extends ProspectResult<CompoundNBT>
     public String resultType()
     {
         return "orefinder:coarse";
+    }
+
+    @Override
+    public CoarseProspectResult merge(CoarseProspectResult another)
+    {
+        if (this.isEmpty())
+        {
+            this.oreBlock = another.oreBlock;
+            this.direction = another.direction;
+        }
+        return this;
     }
 }

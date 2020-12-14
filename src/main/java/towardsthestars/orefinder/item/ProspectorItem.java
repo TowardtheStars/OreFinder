@@ -100,35 +100,35 @@ public class ProspectorItem extends TieredItem
         if (livingEntity instanceof PlayerEntity && !worldIn.isRemote())
         {
             CompoundNBT itemStackTag = stack.getTag() != null ? stack.getTag() : new CompoundNBT();
-            if (!hasResult(stack))
-            {
-                PlayerEntity playerIn = (PlayerEntity) livingEntity;
-                BlockPos origin = playerIn.getPosition();
-                IRandomStartIterator<BlockPos> rangeIter;
-                if (origin.getY() >= OreFinderConfig.SEA_LEVEL.get() && !playerIn.isSneaking())
-                {
-                    rangeIter = this.aboveSeaLevelStreamProvider.provide(origin, this.getFindingRange(), playerIn.getPitchYaw());
-                } else
-                {
-                    rangeIter = this.underSeaLevelStreamProvider.provide(origin, this.getFindingRange(), playerIn.getPitchYaw());
-                }
-                int unit_size = rangeIter.size() / this.getMaxUseDuration();
-                rangeIter.startAt((this.getMaxUseDuration() - count) * unit_size);
-                Stream<BlockPos> range =
-                        StreamSupport.stream(
-                                Spliterators.spliteratorUnknownSize(
-                                        rangeIter, Spliterator.SIZED
-                                ),
-                                false
-                        ).limit(unit_size);
-                ProspectResult result = this.prospector.prospect(worldIn, range, origin);
+            ProspectResult previousResult = ProspectResult.fromNBT(itemStackTag.getCompound("prospect_result"));
 
-                if (!result.isEmpty())
-                {
-                    itemStackTag.put("prospect_result", ProspectResult.toNBT(result));
-                    stack.setTag(itemStackTag);
-                }
+            PlayerEntity playerIn = (PlayerEntity) livingEntity;
+            BlockPos origin = playerIn.getPosition();
+            IRandomStartIterator<BlockPos> rangeIter;
+            if (origin.getY() >= OreFinderConfig.SEA_LEVEL.get() && !playerIn.isSneaking())
+            {
+                rangeIter = this.aboveSeaLevelStreamProvider.provide(origin, this.getFindingRange(), playerIn.getPitchYaw());
+            } else
+            {
+                rangeIter = this.underSeaLevelStreamProvider.provide(origin, this.getFindingRange(), playerIn.getPitchYaw());
             }
+            int unit_size = rangeIter.size() / this.getMaxUseDuration();
+            rangeIter.startAt((this.getMaxUseDuration() - count) * unit_size);
+            Stream<BlockPos> range =
+                    StreamSupport.stream(
+                            Spliterators.spliteratorUnknownSize(
+                                    rangeIter, Spliterator.SIZED
+                            ),
+                            false
+                    ).limit(unit_size);
+            ProspectResult result = this.prospector.prospect(worldIn, range, origin);
+            result.merge(previousResult);
+            if (!result.isEmpty())
+            {
+                itemStackTag.put("prospect_result", ProspectResult.toNBT(result));
+                stack.setTag(itemStackTag);
+            }
+
         }
     }
 
@@ -148,7 +148,7 @@ public class ProspectorItem extends TieredItem
                 removeResult(stack);
             } else
             {
-                ProspectResult.NULL_RESULT.sendReport(entityLiving);
+                ProspectResult.getNull().sendReport(entityLiving);
             }
         }
         stack.damageItem(1, entityLiving, livingEntity -> livingEntity.sendBreakAnimation(entityLiving.getActiveHand()));

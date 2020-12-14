@@ -13,7 +13,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExactPosProspectResult extends ProspectResult<CompoundNBT>
+public class ExactPosProspectResult extends ProspectResult<CompoundNBT, ExactPosProspectResult>
 {
     private BlockPos relativeCoordinates = BlockPos.ZERO;
     private Block block = null;
@@ -22,6 +22,17 @@ public class ExactPosProspectResult extends ProspectResult<CompoundNBT>
     public boolean isEmpty()
     {
         return block == null;
+    }
+
+    @Override
+    public ExactPosProspectResult merge(ExactPosProspectResult another)
+    {
+        if (this.isEmpty())
+        {
+            this.relativeCoordinates = another.relativeCoordinates;
+            this.block = another.block;
+        }
+        return this;
     }
 
     @Override

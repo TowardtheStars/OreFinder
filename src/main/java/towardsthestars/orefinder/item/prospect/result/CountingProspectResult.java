@@ -20,9 +20,19 @@ import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @NoArgsConstructor
-public class CountingProspectResult extends ProspectResult<ListNBT>
+public class CountingProspectResult extends ProspectResult<ListNBT, CountingProspectResult>
 {
     private Map<Block, Long> result = Maps.newHashMap();
+
+    @Override
+    public CountingProspectResult merge(CountingProspectResult another)
+    {
+        another.result.forEach(
+                (block, count) ->
+                this.result.merge(block, count, Long::sum)
+        );
+        return this;
+    }
 
     @Override
     public boolean isEmpty()
@@ -40,13 +50,16 @@ public class CountingProspectResult extends ProspectResult<ListNBT>
 
         for (Map.Entry<Block, Long> entry : result.entrySet())
         {
-            source.sendMessage(
-                    new ItemStack(entry.getKey().asItem(), 1).getTextComponent()
-                            .appendText(" : ")
-                            .appendSibling(
-                                    OreFinderConfig.Amount.getLevelTranslationTextComponent(entry.getValue())
-                            )
-            );
+            if (entry.getValue() > 0)
+            {
+                source.sendMessage(
+                        new ItemStack(entry.getKey().asItem(), 1).getTextComponent()
+                                .appendText(" : ")
+                                .appendSibling(
+                                        OreFinderConfig.Amount.getLevelTranslationTextComponent(entry.getValue())
+                                )
+                );
+            }
         }
     }
 
