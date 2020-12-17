@@ -26,8 +26,8 @@ public class OreFinderConfig
                 .comment("Ore finder will only search below and at this height when in chunk mode.")
                 .defineInRange("MaxHeight", 255, 0, 255);
         MAX_USE_DURATION = builder
-                .comment("How many tick should players use prospecting pickaxe before giving results.")
-                .defineInRange("MaxUseDuration", 200, 10, 72000);
+                .comment("How many tick should players use propick before giving results.")
+                .defineInRange("MaxUseDuration", 100, 10, 72000);
         builder.pop();
 
         Radius.register(builder);

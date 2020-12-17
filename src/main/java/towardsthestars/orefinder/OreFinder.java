@@ -1,6 +1,7 @@
 package towardsthestars.orefinder;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemTier;
 import net.minecraft.item.Rarity;
@@ -14,11 +15,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import towardsthestars.orefinder.config.OreFinderConfig;
 import towardsthestars.orefinder.item.ProspectorItem;
-import towardsthestars.orefinder.item.prospect.Prospectors;
-import towardsthestars.orefinder.item.prospect.result.CoarseProspectResult;
-import towardsthestars.orefinder.item.prospect.result.CountingProspectResult;
-import towardsthestars.orefinder.item.prospect.result.ExactPosProspectResult;
-import towardsthestars.orefinder.item.prospect.result.ProspectResult;
+import towardsthestars.orefinder.item.prospect.IProspectorTaskProvider;
 
 @Mod("orefinder")
 public class OreFinder
@@ -35,7 +32,7 @@ public class OreFinder
                                     .rarity(Rarity.COMMON)
                     )
                             .setFindingRange(OreFinderConfig.Radius.WOODEN.get())
-                            .setProspector(Prospectors.COUNT)
+                            .setProspectorProvider(IProspectorTaskProvider.COUNT)
     );
 
     public static final RegistryObject<Item> STONE_FINDER = ITEM.register("stone_propick",
@@ -46,7 +43,7 @@ public class OreFinder
                                     .rarity(Rarity.COMMON)
                     )
                             .setFindingRange(OreFinderConfig.Radius.STONE.get())
-                            .setProspector(Prospectors.COARSE4)
+                            .setProspectorProvider(IProspectorTaskProvider.COARSE4)
     );
 
     public static final RegistryObject<Item> IRON_FINDER = ITEM.register("iron_propick",
@@ -54,10 +51,10 @@ public class OreFinder
                     new ProspectorItem(
                             ItemTier.IRON,
                             new Item.Properties()
-                                    .rarity(Rarity.UNCOMMON)
+                                    .rarity(Rarity.RARE)
                     )
                             .setFindingRange(OreFinderConfig.Radius.IRON.get())
-                            .setProspector(Prospectors.COARSE8)
+                            .setProspectorProvider(IProspectorTaskProvider.COARSE8)
     );
 
     public static final RegistryObject<Item> GOLD_FINDER = ITEM.register("golden_propick",
@@ -65,11 +62,11 @@ public class OreFinder
                     new ProspectorItem(
                             ItemTier.GOLD,
                             new Item.Properties()
-                                    .rarity(Rarity.RARE)
+                                    .rarity(Rarity.UNCOMMON)
                                     .maxDamage(1)
                     )
                             .setFindingRange(OreFinderConfig.Radius.GOLDEN.get())
-                            .setProspector(Prospectors.EXACT)
+                            .setProspectorProvider(IProspectorTaskProvider.EXACT)
 
     );
 
@@ -81,7 +78,7 @@ public class OreFinder
                                     .rarity(Rarity.RARE)
                     )
                             .setFindingRange(OreFinderConfig.Radius.DIAMOND.get())
-                            .setProspector(Prospectors.COUNT)
+                            .setProspectorProvider(IProspectorTaskProvider.COUNT)
     );
 
 
@@ -94,14 +91,11 @@ public class OreFinder
     public OreFinder()
     {
         OreFinderConfig.register();
-        ProspectResult.register(CoarseProspectResult::new);
-        ProspectResult.register(CountingProspectResult::new);
-        ProspectResult.register(ExactPosProspectResult::new);
         ITEM.register(FMLJavaModLoadingContext.get().getModEventBus());
     }
 
     public static boolean shouldProspect(Block block)
     {
-        return PROSPECT_BLOCKS.contains(block);
+        return PROSPECT_BLOCKS.contains(block) && block != Blocks.AIR && block != Blocks.CAVE_AIR && block != Blocks.VOID_AIR;
     }
 }

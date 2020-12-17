@@ -1,19 +1,19 @@
 package towardsthestars.orefinder.item.prospect.result;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import net.minecraft.block.Block;
 import net.minecraft.command.ICommandSource;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.registries.ForgeRegistries;
 import towardsthestars.orefinder.util.IPlainDirection;
 import towardsthestars.orefinder.util.Plain8Direction;
+import towardsthestars.orefinder.util.multitick.TaskResult;
 
 /**
  * Whether there are ores or not
@@ -22,9 +22,12 @@ import towardsthestars.orefinder.util.Plain8Direction;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CoarseProspectResult extends ProspectResult<CompoundNBT, CoarseProspectResult>
+public class CoarseProspectResult extends ProspectResult<CompoundNBT>
 {
-
+    @Getter
+    @Setter
+    private BlockPos origin;
+    private BlockPos orePos = null;
     private IPlainDirection direction = null;
     private Block oreBlock = null;
     @Override
@@ -51,6 +54,8 @@ public class CoarseProspectResult extends ProspectResult<CompoundNBT, CoarsePros
         CompoundNBT nbt = new CompoundNBT();
         if (!this.isEmpty())
         {
+            nbt.put("origin", NBTUtil.writeBlockPos(origin));
+            nbt.put("orepos", NBTUtil.writeBlockPos(orePos));
             nbt.put("direction", this.direction.getNBT());
             nbt.putString("block", this.oreBlock.getRegistryName().toString());
         }
@@ -72,21 +77,28 @@ public class CoarseProspectResult extends ProspectResult<CompoundNBT, CoarsePros
                     )
             );
         }
+        this.origin = NBTUtil.readBlockPos(nbt.getCompound("origin"));
+        this.orePos = NBTUtil.readBlockPos(nbt.getCompound("orepos"));
     }
 
-    @Override
-    public String resultType()
+    public double distanceSq()
     {
-        return "orefinder:coarse";
+        return this.orePos.distanceSq(this.getOrigin());
     }
 
+
     @Override
-    public CoarseProspectResult merge(CoarseProspectResult another)
+    public CoarseProspectResult merge(TaskResult another)
     {
-        if (this.isEmpty())
+        if (another instanceof CoarseProspectResult)
         {
-            this.oreBlock = another.oreBlock;
-            this.direction = another.direction;
+            CoarseProspectResult another1 = (CoarseProspectResult) another;
+            if (this.isEmpty() || (another1.isValid() && another1.distanceSq() < this.distanceSq()))
+            {
+                this.orePos = another1.orePos;
+                this.oreBlock = another1.oreBlock;
+                this.direction = another1.direction;
+            }
         }
         return this;
     }

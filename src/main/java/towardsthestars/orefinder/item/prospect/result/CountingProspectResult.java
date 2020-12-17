@@ -14,25 +14,30 @@ import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.registries.ForgeRegistries;
 import towardsthestars.orefinder.config.OreFinderConfig;
+import towardsthestars.orefinder.util.multitick.TaskResult;
 
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @NoArgsConstructor
-public class CountingProspectResult extends ProspectResult<ListNBT, CountingProspectResult>
+public class CountingProspectResult extends ProspectResult<ListNBT>
 {
     private Map<Block, Long> result = Maps.newHashMap();
 
     @Override
-    public CountingProspectResult merge(CountingProspectResult another)
+    public CountingProspectResult merge(TaskResult another)
     {
-        another.result.forEach(
-                (block, count) ->
-                this.result.merge(block, count, Long::sum)
-        );
+        if (another instanceof CountingProspectResult)
+        {
+            ((CountingProspectResult)another).result.forEach(
+                    (block, count) ->
+                            this.result.merge(block, count, Long::sum)
+            );
+        }
         return this;
     }
+
 
     @Override
     public boolean isEmpty()
@@ -98,11 +103,5 @@ public class CountingProspectResult extends ProspectResult<ListNBT, CountingPros
                                 compoundNBT.getLong("count") : 0,
                         Long::sum
                 ));
-    }
-
-    @Override
-    public String resultType()
-    {
-        return "orefinder:counting";
     }
 }

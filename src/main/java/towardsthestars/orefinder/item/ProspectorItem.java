@@ -8,33 +8,25 @@ import net.minecraft.item.*;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.*;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
 import towardsthestars.orefinder.config.OreFinderConfig;
 import towardsthestars.orefinder.item.prospect.*;
+import towardsthestars.orefinder.item.prospect.multitick.MultiTickProspector;
 import towardsthestars.orefinder.item.prospect.result.ProspectResult;
-import towardsthestars.orefinder.util.IRandomStartIterator;
+import towardsthestars.orefinder.util.blockpos.BlockPosStreamProvider;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public class ProspectorItem extends TieredItem
 {
     @Getter
     private int findingRange;
     @Getter
-    private AbstractProspector<? extends ProspectResult> prospector;
-    @Getter
-    private IProspectPosRangeProvider underSeaLevelStreamProvider;
-    @Getter
-    private IProspectPosRangeProvider aboveSeaLevelStreamProvider;
+    private IProspectorTaskProvider<?> prospectorProvider;
 
     public ProspectorItem(IItemTier tier, Properties properties)
     {
@@ -44,10 +36,6 @@ public class ProspectorItem extends TieredItem
                 )
                 .group(ItemGroup.TOOLS)
         );
-
-        this
-                .setAboveSeaLevelStreamProvider(PosRangeProviders.EXPAND_DOWN_CHEBYSHEV)
-                .setUnderSeaLevelStreamProvider(PosRangeProviders.EXPAND_CUBE_CHEBYSHEV);
     }
 
 
@@ -64,11 +52,12 @@ public class ProspectorItem extends TieredItem
         tooltip.add(
                 new TranslationTextComponent(
                         "orefinder.tooltip.method",
-                        this.prospector.getTooltip()
+                        this.prospectorProvider.getTooltip()
                 )
         );
     }
 
+    @Nonnull
     @Override
     public UseAction getUseAction(ItemStack stack)
     {
@@ -93,6 +82,8 @@ public class ProspectorItem extends TieredItem
         return super.onItemRightClick(worldIn, playerIn, handIn);
     }
 
+    public static final String PROSPECT_SCENE_TAG = "ProspectScene";
+
     @Override
     public void onUsingTick(ItemStack stack, LivingEntity livingEntity, int count)
     {
@@ -100,35 +91,22 @@ public class ProspectorItem extends TieredItem
         if (livingEntity instanceof PlayerEntity && !worldIn.isRemote())
         {
             CompoundNBT itemStackTag = stack.getTag() != null ? stack.getTag() : new CompoundNBT();
-            ProspectResult previousResult = ProspectResult.fromNBT(itemStackTag.getCompound("prospect_result"));
+            MultiTickProspector<?, ?> task = this.getProspectorProvider().provide(
+                    worldIn, livingEntity.getPosition(),
+                    BlockPosStreamProvider.fromOrigin(
+                            livingEntity.getPosition(), this.getFindingRange(),
+                            BlockPosStreamProvider.DivideAxis.X, this.getMaxUseDuration()
+                    )
+            );
+            task.setTick(this.getMaxUseDuration() - count);
 
-            PlayerEntity playerIn = (PlayerEntity) livingEntity;
-            BlockPos origin = playerIn.getPosition();
-            IRandomStartIterator<BlockPos> rangeIter;
-            if (origin.getY() >= OreFinderConfig.SEA_LEVEL.get() && !playerIn.isSneaking())
+            if (itemStackTag.contains(PROSPECT_SCENE_TAG, 10))
             {
-                rangeIter = this.aboveSeaLevelStreamProvider.provide(origin, this.getFindingRange(), playerIn.getPitchYaw());
-            } else
-            {
-                rangeIter = this.underSeaLevelStreamProvider.provide(origin, this.getFindingRange(), playerIn.getPitchYaw());
+                task.restoreScene(itemStackTag.getCompound(PROSPECT_SCENE_TAG));
             }
-            int unit_size = rangeIter.size() / this.getMaxUseDuration();
-            rangeIter.startAt((this.getMaxUseDuration() - count) * unit_size);
-            Stream<BlockPos> range =
-                    StreamSupport.stream(
-                            Spliterators.spliteratorUnknownSize(
-                                    rangeIter, Spliterator.SIZED
-                            ),
-                            false
-                    ).limit(unit_size);
-            ProspectResult result = this.prospector.prospect(worldIn, range, origin);
-            result.merge(previousResult);
-            if (!result.isEmpty())
-            {
-                itemStackTag.put("prospect_result", ProspectResult.toNBT(result));
-                stack.setTag(itemStackTag);
-            }
-
+            task.executeSingleTick();
+            itemStackTag.put(PROSPECT_SCENE_TAG, task.saveScene());
+            stack.setTag(itemStackTag);
         }
     }
 
@@ -142,13 +120,20 @@ public class ProspectorItem extends TieredItem
             if (hasResult(stack))
             {
                 LogManager.getLogger().info("Prospect finished!");
-                CompoundNBT resultNBT = itemStackTag.getCompound("prospect_result");
-                ProspectResult result = ProspectResult.fromNBT(resultNBT);
+                MultiTickProspector<?, ?> task = this.getProspectorProvider().provide(
+                        worldIn, entityLiving.getPosition(),
+                        BlockPosStreamProvider.fromOrigin(
+                                entityLiving.getPosition(), this.getFindingRange(),
+                                BlockPosStreamProvider.DivideAxis.X, this.getMaxUseDuration()
+                        )
+                );
+                task.restoreScene(itemStackTag.getCompound(PROSPECT_SCENE_TAG));
+                ProspectResult result = task.getPreviousResult();
                 result.sendReport(entityLiving);
                 removeResult(stack);
             } else
             {
-                ProspectResult.getNull().sendReport(entityLiving);
+                ProspectResult.NULL_RESULT.sendReport(entityLiving);
             }
         }
         stack.damageItem(1, entityLiving, livingEntity -> livingEntity.sendBreakAnimation(entityLiving.getActiveHand()));
@@ -175,28 +160,17 @@ public class ProspectorItem extends TieredItem
         return this;
     }
 
-    public ProspectorItem setProspector(AbstractProspector<? extends ProspectResult> prospector)
+    public ProspectorItem setProspectorProvider(IProspectorTaskProvider<?> prospector)
     {
-        this.prospector = prospector;
+        this.prospectorProvider = prospector;
         return this;
     }
 
-    public ProspectorItem setUnderSeaLevelStreamProvider(IProspectPosRangeProvider underSeaLevelStreamProvider)
-    {
-        this.underSeaLevelStreamProvider = underSeaLevelStreamProvider;
-        return this;
-    }
-
-    public ProspectorItem setAboveSeaLevelStreamProvider(IProspectPosRangeProvider aboveSeaLevelStreamProvider)
-    {
-        this.aboveSeaLevelStreamProvider = aboveSeaLevelStreamProvider;
-        return this;
-    }
 
     protected boolean hasResult(ItemStack stack)
     {
         CompoundNBT itemStackTag = stack.getTag() != null ? stack.getTag() : new CompoundNBT();
-        return itemStackTag.contains("prospect_result", 10);
+        return itemStackTag.contains(PROSPECT_SCENE_TAG, 10);
     }
 
     protected void removeResult(ItemStack stack)
@@ -204,7 +178,7 @@ public class ProspectorItem extends TieredItem
         CompoundNBT itemStackTag = stack.getTag() != null ? stack.getTag() : new CompoundNBT();
         if (hasResult(stack))
         {
-            itemStackTag.remove("prospect_result");
+            itemStackTag.remove(PROSPECT_SCENE_TAG);
             if (itemStackTag.isEmpty())
             {
                 stack.setTag(null);

@@ -8,12 +8,14 @@ import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.registries.ForgeRegistries;
+import towardsthestars.orefinder.util.multitick.TaskResult;
 
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExactPosProspectResult extends ProspectResult<CompoundNBT, ExactPosProspectResult>
+public class ExactPosProspectResult extends ProspectResult<CompoundNBT>
 {
     private BlockPos relativeCoordinates = BlockPos.ZERO;
     private Block block = null;
@@ -24,13 +26,25 @@ public class ExactPosProspectResult extends ProspectResult<CompoundNBT, ExactPos
         return block == null;
     }
 
-    @Override
-    public ExactPosProspectResult merge(ExactPosProspectResult another)
+    public double distanceSq()
     {
-        if (this.isEmpty())
+        return this.relativeCoordinates.distanceSq(Vec3i.NULL_VECTOR);
+    }
+
+    @Override
+    public ExactPosProspectResult merge(TaskResult another)
+    {
+        System.out.println("Merge exact");
+        if (another instanceof ExactPosProspectResult)
         {
-            this.relativeCoordinates = another.relativeCoordinates;
-            this.block = another.block;
+            System.out.println("Another one type matched");
+            ExactPosProspectResult another1 = (ExactPosProspectResult) another;
+            if (this.isEmpty() || (another1.isValid() && (another1.distanceSq() < this.distanceSq())))
+            {
+                System.out.println(relativeCoordinates.toString());
+                this.relativeCoordinates = another1.relativeCoordinates;
+                this.block = another1.block;
+            }
         }
         return this;
     }
@@ -51,8 +65,11 @@ public class ExactPosProspectResult extends ProspectResult<CompoundNBT, ExactPos
     public CompoundNBT serializeNBT()
     {
         CompoundNBT nbt = new CompoundNBT();
-        nbt.putString("block", this.block.getRegistryName().toString());
-        nbt.put("pos", NBTUtil.writeBlockPos(this.relativeCoordinates));
+        if (this.isValid())
+        {
+            nbt.putString("block", this.block.getRegistryName().toString());
+            nbt.put("pos", NBTUtil.writeBlockPos(this.relativeCoordinates));
+        }
         return nbt;
     }
 
@@ -69,9 +86,4 @@ public class ExactPosProspectResult extends ProspectResult<CompoundNBT, ExactPos
         }
     }
 
-    @Override
-    public String resultType()
-    {
-        return "orefinder:exact";
-    }
 }

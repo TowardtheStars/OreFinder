@@ -1,24 +1,18 @@
 package towardsthestars.orefinder.item.prospect.result;
 
-import com.google.common.collect.Maps;
 import lombok.NoArgsConstructor;
 import net.minecraft.command.ICommandSource;
-import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.EndNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraftforge.common.util.INBTSerializable;
-import towardsthestars.orefinder.util.ICanMerge;
+import towardsthestars.orefinder.util.multitick.TaskResult;
 
-import javax.annotation.Nonnull;
-import java.util.Map;
-import java.util.function.Supplier;
 
 @NoArgsConstructor
-public abstract class ProspectResult<T extends INBT, E extends ProspectResult>
-        implements INBTSerializable<T>, ICanMerge<E>
+public abstract class ProspectResult<NBT extends INBT>
+        implements TaskResult<NBT>
 {
 
     public boolean isEmpty()
@@ -40,87 +34,47 @@ public abstract class ProspectResult<T extends INBT, E extends ProspectResult>
         }
     }
 
-    protected abstract void report(ICommandSource source);
+    // abstract
+    protected void report(ICommandSource source){}
 
-    public abstract String resultType();
 
-    private static Map<String, Supplier<? extends ProspectResult>> RESULT_PROVIDERS = Maps.newHashMap();
-
-    public static void register(Supplier<? extends ProspectResult> supplier)
+    @Override
+    public NBT serializeNBT()
     {
-        RESULT_PROVIDERS.put(supplier.get().resultType(), supplier);
+        return null;
     }
 
-    public static class NullResult extends ProspectResult<EndNBT, NullResult>
+    @Override
+    public void deserializeNBT(NBT nbt)
     {
-        private NullResult(){}
-        static NullResult NULL_RESULT = new NullResult();
-        @Override
-        protected void report(ICommandSource source)
-        {
-            source.sendMessage(new TranslationTextComponent("orefinder.report.empty")
-                    .setStyle(new Style().setColor(TextFormatting.GREEN))
-            );
-        }
 
-        @Override
-        public String resultType()
-        {
-            return null;
-        }
+    }
 
+
+    public static final ProspectResult NULL_RESULT = new ProspectResult<EndNBT>(){
         @Override
         public EndNBT serializeNBT()
         {
-            return null;
+            return EndNBT.INSTANCE;
         }
+    };
 
-        @Override
-        public void deserializeNBT(EndNBT nbt)
-        {
 
-        }
-
-        @Override
-        public NullResult merge(NullResult another)
-        {
-            return this;
-        }
+    /**
+     * Merge function
+     *
+     * @param another Another task result
+     * @return Always return this
+     */
+    @Override
+    public <T extends TaskResult<?>> T merge(T another)
+    {
+        return another;
     }
 
-    public static ProspectResult getNull()
+    @Override
+    public boolean isValid()
     {
-        return NullResult.NULL_RESULT;
-    }
-
-    public static Supplier<? extends ProspectResult> getValue(String type)
-    {
-        return RESULT_PROVIDERS.get(type);
-    }
-
-    @Nonnull
-    public static ProspectResult fromNBT(CompoundNBT nbt)
-    {
-        Supplier<? extends ProspectResult> supplier = ProspectResult.getValue(nbt.getString("type"));
-        if (supplier != null)
-        {
-            ProspectResult prospectResult = supplier.get();
-            prospectResult.deserializeNBT(nbt.get("result"));
-            return prospectResult;
-        }
-        return NullResult.getNull();
-    }
-
-    @Nonnull
-    public static CompoundNBT toNBT(ProspectResult result)
-    {
-        if (!result.isEmpty())
-        {
-            CompoundNBT resultNbt = new CompoundNBT();
-            resultNbt.putString("type", result.resultType());
-            resultNbt.put("result", result.serializeNBT());
-            return resultNbt;
-        }
-        return new CompoundNBT();
+        return !this.isEmpty();
     }
 }
